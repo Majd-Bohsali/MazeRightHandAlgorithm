@@ -225,8 +225,19 @@ while agent(1) ~= end_point(1) || agent(2) ~= end_point(2)
         rightSensor.Color = "black";
     end
     
-    if(p.XData == end_point(1) && p.YData == end_point(2))
-        heading = heading - p2
+    if(p.XData == end_point(1) && p.YData + 0.5 == end_point(2))
+        heading = heading - pi/2;
+        agent(1) = round(agent(1) + h * vel * cos(heading), 5);
+        agent(2) = round(agent(2) + h * vel * sin(heading), 5);
+        p.XData = agent(1);
+        p.YData = agent(2);
+        forwardSensor.XData = agent(1) + r * cos(heading);
+        forwardSensor.YData = agent(2) + r * sin(heading);
+        leftSensor.XData = agent(1) + r * cos(heading) - l * sin(heading);
+        leftSensor.YData = agent(2) + r * sin(heading) + l * cos(heading);
+        rightSensor.XData = agent(1) + r * cos(heading) + l * sin(heading);
+        rightSensor.YData = agent(2) + r * sin(heading) - l * cos(heading);
+        drawnow
         break; 
     end
 
