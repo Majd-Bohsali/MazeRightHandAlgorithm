@@ -1,0 +1,235 @@
+clc;
+clear;
+%close all;
+clf
+
+% Define maze boundaries
+xmin = -10;
+xmax = 10;
+ymin = -10;
+ymax = 10;
+vel = 1; 
+heading = pi/2; % declare heading dirction, inital is 90 degrees
+
+% Define obstacles as inequalities in the form x <= f(y)
+obstacles = {
+%    @(x,y) y <= x.^2 - 5;                 % Example: parabolic obstacle
+%    @(x,y) y >= sin(x) - 3 && y <= 5;     % Example: sine wave obstacle
+    @(x,y) (x >= -8.5 && x <= 7.6) && (y >= -8 && y <= -7.5);  % Example: rectangular obstacle
+    @(x,y) (x >= 1 && x <= 1.5) && (y >= -10 && y <= -8);
+    @(x,y) (x >= 6.9 && x <= 7.6) && (y >= -7.6 && y <= -5.4);
+    @(x,y) (x >= -3 && x <= -2.5) && (y >= -7.5 && y <= -5.5);
+    @(x,y) (x >= -3 && x <= 5) && (y >= -5.5 && y <= -5);
+    @(x,y) (x >= -10 && x <= -8) && (y >= -5.5 && y <= -5);
+    @(x,y) (x >= -10 && x <= -5) && (y >= -5.5 && y <= -5);
+    @(x,y) (x >= -5.5 && x <= -5) && (y >= -5 && y <= -2);
+    @(x,y) (x >= -10 && x <= -3) && (y >= 0.5 && y <= 1);
+    @(x,y) (x >= -3 && x <= -2.5) && (y >= -2 && y <= 1);
+    @(x,y) (x >= -3 && x <= 7.5) && (y >= -2.5 && y <= -2);
+    @(x,y) (x >= -0.1 && x <= 7.5) && (y >= 0.5 && y <= 1.1);
+    @(x,y) (x >= -0.1 && x <= 0.5) && (y >= 1 && y <= 4);
+    @(x,y) (x >= -2.9 && x <= 10) && (y >= 3.5 && y <= 4);
+    @(x,y) (x >= -10 && x <= -6) && (y >= 3.5 && y <= 4);
+    @(x,y) (x >= -7.5 && x <= 7.5) && (y >= 7.5 && y <= 8);
+    @(x,y) (x >= -1.5 && x <= -1) && (y >= 8 && y <= 10);
+    @(x,y) (x >= 7 && x <= 7.5) && (y >= 6 && y <= 7.5);
+    @(x,y) (x >= 4.5 && x <= 5) && (y >= 4 && y <= 6);
+    @(x,y) (x >= -3 && x <= 1) && (y >= 5.5 && y <= 6);
+    @(x,y) (x >= -8 && x <= -7.5) && (y >= 6 && y <= 8);
+    @(x,y) (x >= -8 && x <= -2) && (y >= 5.5 && y <= 6);
+    @(x,y) x <= -10; 
+    @(x,y) x >= 10; 
+    @(x,y) y <= -10; 
+    @(x,y) y >= 10; 
+    
+};
+
+% Define start and end points
+start_point = [0, -10];
+end_point = [0, 10];
+
+% Defines agent, index 1 is x position, index 2 is y position
+agent = [start_point(1), start_point(2)];  
+
+% Defines sensor parameters
+r = 0.5;  % perpendicular distance from sensor to agent 
+l = 0.5;   % distance between the sensors s1 and s2 or s2 and s3 
+
+% Visualization parameters
+resolution = 0.1;  % Resolution for plotting obstacles
+marker_size = 10;
+
+% Plot maze boundaries
+figure(1);
+hold on;
+plot([-1, xmin, xmin, -1], [ymax, ymax, ymin, ymin], 'k-', 'LineWidth', 2);
+plot([1, xmax, xmax, 1], [ymin, ymin, ymax, ymax], 'k-', 'LineWidth', 2);
+%plot([xmin, -1, xmax, xmax, xmin, xmin], [ymin, ymin, ymax, ymax, ymin], 'k-', 'LineWidth', 2);
+
+% Plot obstacles
+x_range = xmin:resolution:xmax;
+y_range = ymin:resolution:ymax;
+for i = 1:length(obstacles)
+    for j = 1:length(x_range)
+        for k = 1:length(y_range)
+            if obstacles{i}(x_range(j), y_range(k)) && x_range(j)>-10 && x_range(j)<10 && y_range(k)>-10 && y_range(k)<10
+                plot(x_range(j), y_range(k), 'r.', 'MarkerSize', 10);
+            end
+        end
+    end
+end
+
+% Plot start and end points
+plot(start_point(1), start_point(2), 'go', 'MarkerSize', marker_size, 'LineWidth', 2);  % Green circle for start
+plot(end_point(1), end_point(2), 'ro', 'MarkerSize', marker_size, 'LineWidth', 2);  % Red circle for end
+plot(agent(1), agent(2), 'bo', 'MarkerSize', marker_size, 'LineWidth', 2);  % Green circle for start
+
+
+% Adjust axes and grid
+axis equal;
+grid on;
+xlim([xmin, xmax]);
+ylim([ymin, ymax]);
+title('COSMOS 24 Cluster 11 Maze');
+
+% senser methods for robot oriented drive (direction depends on robot
+% heading)
+% heading is angle the agent is facing, 
+% l is distance between the sensors s1 and s2 or s2 and s3
+% r is perpendicular distance from sensor to agent 
+
+function forwardObstacle = checkForwardObstacle(agent, obstacles, heading, l, r)
+    forwardObstacle = false; 
+    for i = 1:length(obstacles)
+        if obstacles{i}(agent(1) + r * cos(heading) , agent(2) + r * sin(heading))   % checks if the point is in a wall infront of it
+            forwardObstacle = true;
+            break;
+        end
+    end
+end
+
+function leftDiagObstacle = checkLeftDiagObstacle(agent, obstacles, heading, l, r)
+    leftDiagObstacle = false; 
+    for i = 1:length(obstacles)
+        if obstacles{i}(agent(1) + r * cos(heading) - l * sin(heading) , agent(2) + r * sin(heading) + l * cos(heading))   % checks if the point is in a wall left diagonally of it
+            leftDiagObstacle = true;
+            break;
+        end
+    end
+end
+
+function rightDiagObstacle = checkRightDiagObstacle(agent, obstacles, heading, l, r)
+    rightDiagObstacle = false; 
+    for i = 1:length(obstacles)
+        if obstacles{i}(agent(1) + r * cos(heading) + l * sin(heading), agent(2) + r * sin(heading) - l * cos(heading))   % checks if the point is in a wall right diagonally of it
+            rightDiagObstacle = true;
+            break;
+        end
+    end
+end
+
+%% right hand method algorithm
+h = 0.5;
+w = 0;
+agent = [start_point(1), start_point(2)];
+% create robot
+p = plot(agent(1), agent(2),"o", "MarkerFaceColor", "blue",'MarkerSize', 14);
+% create marker to indicate forward direction
+forwardSensor = plot(agent(1) + r * cos(heading), agent(2) + r * sin(heading),".", "Color", "green",'LineWidth', 4.0);
+leftSensor = plot(agent(1) + r * cos(heading) - l * sin(heading) , agent(2) + r * sin(heading) + l * cos(heading),".", "Color", "green",'LineWidth', 4.0);
+rightSensor = plot(agent(1) + r * cos(heading) + l * sin(heading), agent(2) + r * sin(heading) - l * cos(heading),".", "Color", "green",'LineWidth', 4.0);
+
+while ~checkRightDiagObstacle(agent, obstacles, heading, l, r)
+    heading = heading + h * w;
+    agent(1) = round(agent(1) + h * vel * cos(heading), 5);
+    agent(2) = round(agent(2) + h * vel * sin(heading), 5);
+    if (checkForwardObstacle(agent,obstacles, heading, l, r))
+        heading = heading + pi/2;
+    end
+
+    p.XData = agent(1);
+    p.YData = agent(2);
+    forwardSensor.XData = agent(1) + r * cos(heading);
+    forwardSensor.YData = agent(2) + r * sin(heading);
+    leftSensor.XData = agent(1) + r * cos(heading) - l * sin(heading);
+    leftSensor.YData = agent(2) + r * sin(heading) + l * cos(heading);
+    rightSensor.XData = agent(1) + r * cos(heading) + l * sin(heading);
+    rightSensor.YData = agent(2) + r * sin(heading) - l * cos(heading);
+
+        % Update sensor history
+    if ~checkForwardObstacle(agent, obstacles, heading, l, r)
+        forwardSensor.Color = "green";
+    else
+        forwardSensor.Color = "black";
+    end
+
+    if ~checkLeftDiagObstacle(agent, obstacles, heading, l, r)
+        leftSensor.Color = "green";
+    else
+        leftSensor.Color = "black";
+    end
+
+    if ~checkRightDiagObstacle(agent, obstacles, heading, l, r) 
+        rightSensor.Color = "green";
+    else
+        rightSensor.Color = "black";
+    end
+
+    pause(0.3)
+end
+
+while agent(1) ~= end_point(1) || agent(2) ~= end_point(2)  
+    if(checkRightDiagObstacle(agent, obstacles, heading, l, r) && (~checkForwardObstacle(agent, obstacles, heading, l, r) ))
+       disp("Moved forward"); 
+       heading = heading + h * w;
+       agent(1) = round(agent(1) + h * vel * cos(heading), 5);
+       agent(2) = round(agent(2) + h * vel * sin(heading), 5);
+    elseif(checkForwardObstacle(agent, obstacles, heading, l, r) && checkLeftDiagObstacle(agent, obstacles, heading, l, r) && checkRightDiagObstacle(agent, obstacles, heading, l, r))
+        disp("turned Left")
+        heading = heading + pi/2;
+    else
+        heading = heading + h * w;
+        agent(1) = round(agent(1) + h * vel * cos(heading), 5);
+        agent(2) = round(agent(2) + h * vel * sin(heading), 5);
+        disp("turned right"); 
+        heading = heading - pi/2; 
+    end
+
+    % Update plot positions
+    p.XData = agent(1);
+    p.YData = agent(2);
+    forwardSensor.XData = agent(1) + r * cos(heading);
+    forwardSensor.YData = agent(2) + r * sin(heading);
+    leftSensor.XData = agent(1) + r * cos(heading) - l * sin(heading);
+    leftSensor.YData = agent(2) + r * sin(heading) + l * cos(heading);
+    rightSensor.XData = agent(1) + r * cos(heading) + l * sin(heading);
+    rightSensor.YData = agent(2) + r * sin(heading) - l * cos(heading);
+    drawnow
+
+    % Update sensor history
+    if ~checkForwardObstacle(agent, obstacles, heading, l, r)
+        forwardSensor.Color = "green";
+    else
+        forwardSensor.Color = "black";
+    end
+
+    if ~checkLeftDiagObstacle(agent, obstacles, heading, l, r)
+        leftSensor.Color = "green";
+    else
+        leftSensor.Color = "black";
+    end
+
+    if ~checkRightDiagObstacle(agent, obstacles, heading, l, r)
+        rightSensor.Color = "green";
+    else
+        rightSensor.Color = "black";
+    end
+    
+    if(p.XData == end_point(1) && p.YData == end_point(2))
+        heading = heading - p2
+        break; 
+    end
+
+
+    pause(0.1);
+end
